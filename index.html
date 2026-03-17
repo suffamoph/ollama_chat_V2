@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ollama 聊天助手</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
-    <link rel="icon" href="/assets/favicon.ico">
-
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <link rel="manifest" href="assets/site.webmanifest">
+    
     <style>
         * {
             margin: 0;
@@ -41,7 +43,7 @@
         .chat-header {
             background: #e0e0e0;
             color: #333;
-            padding: 20px 20px 90px;
+            padding: 28px 20px 90px;
             text-align: center;
             position: relative;
             display: flex;
@@ -51,9 +53,9 @@
         }
 
         .chat-header h1 {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 700;
-            margin: 6px 0 10px 0;
+            margin: 0 0 12px 0;
             line-height: 1.05;
         }
 
@@ -258,20 +260,20 @@
             position: absolute;
             top: 12px;
             right: 14px;
-            min-width: 190px;
-            padding: 6px 10px;
-            border-radius: 8px;
+            min-width: 220px;
+            padding: 8px 10px;
+            border-radius: 10px;
             background: #e8e8e8;
             border: 1px solid #d0d0d0;
             text-align: right;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.06);
         }
 
         .vram-text {
             font-size: 12px;
-            color: #444;
+            color: #555;
             margin-bottom: 4px;
             white-space: nowrap;
-            font-weight: 600;
         }
 
         .vram-line {
@@ -283,15 +285,14 @@
 
         .vram-percent {
             font-size: 12px;
-            color: #444;
-            width: 48px;
+            color: #555;
+            width: 50px;
             text-align: right;
             flex-shrink: 0;
-            font-weight: 700;
         }
 
         .vram-bar {
-            width: 86px;
+            width: 110px;
             height: 6px;
             border-radius: 999px;
             background: #d0d0d0;
@@ -332,19 +333,6 @@
             white-space: pre-wrap;
             overflow-wrap: anywhere;
             word-break: break-word;
-        }
-
-        .pending-bubble {
-            display: inline-block;
-            background: transparent;
-            color: #333;
-            border: none;
-            padding: 0 6px;
-            border-radius: 999px;
-            font-size: 13px;
-            margin-right: 8px;
-            vertical-align: middle;
-            box-shadow: none;
         }
 
         .message.user {
@@ -725,6 +713,8 @@
             border-radius: 999px;
             background: #e0e0e0;
             z-index: 6;
+            transform: scale(1.2);
+            transform-origin: top left;
         }
 
         .status-dot {
@@ -1734,21 +1724,6 @@
             aiTextNode.className = 'assistant-text';
             aiMessageDiv.appendChild(aiTextNode);
 
-                // Small pending bubble shown when thinking is OFF to indicate waiting
-                let pendingBubble = null;
-                const showPendingBubble = () => {
-                    if (pendingBubble) return;
-                    pendingBubble = document.createElement('span');
-                    pendingBubble.className = 'pending-bubble';
-                    pendingBubble.textContent = '⏳';
-                    aiMessageDiv.insertBefore(pendingBubble, aiTextNode);
-                };
-                const removePendingBubble = () => {
-                    if (!pendingBubble) return;
-                    pendingBubble.remove();
-                    pendingBubble = null;
-                };
-
             const assistantTools = document.createElement('div');
             assistantTools.className = 'assistant-bubble-tools';
             assistantTools.style.display = 'none';
@@ -1776,7 +1751,6 @@
             const thinkEnabled = thinkingToggle ? Boolean(thinkingToggle.checked) : false;
             // Set global flag so stream parser can show/hide internal thinking content
             window.__displayThinking = !!thinkEnabled;
-            if (!thinkEnabled) showPendingBubble();
             const updateAssistantCount = () => {
                 const currentText = aiTextNode.textContent || '';
                 const metrics = getTextMetrics(currentText);
@@ -1948,14 +1922,7 @@
                 const filterThinkContent = (text) => {
                     let result = '';
                     let i = 0;
-                    // Decide whether to enter think suppression only when the chunk
-                    // explicitly begins with a <think> tag (after optional whitespace).
-                    if (thinkFilterState === 'idle' && text.length > 0) {
-                        const trimmed = text.replace(/^[\s\u00A0\n\r]+/, '');
-                        if (trimmed.startsWith('<think>') || trimmed.startsWith('</think>')) {
-                            thinkFilterState = 'in_think';
-                        }
-                    }
+                    if (thinkFilterState === 'idle' && text.length > 0) thinkFilterState = 'in_think';
                     while (i < text.length) {
                         if (thinkFilterState === 'in_think') {
                             const end = text.indexOf('</think>', i);
@@ -2019,7 +1986,6 @@
                                             if (chunk) {
                                                 assistantMessage += chunk;
                                                 aiTextNode.textContent = assistantMessage;
-                                                removePendingBubble();
                                                 updateAssistantCount();
                                                 chatMessages.scrollTop = chatMessages.scrollHeight;
                                                 // non-thinking content arrived — if we were thinking, mark end
@@ -2037,7 +2003,6 @@
                                             if (before) {
                                                 assistantMessage += before;
                                                 aiTextNode.textContent = assistantMessage;
-                                                removePendingBubble();
                                                 updateAssistantCount();
                                             }
                                             inEmbeddedThink = true;
@@ -2055,7 +2020,6 @@
                                 if (deltaText) {
                                     assistantMessage += deltaText;
                                     aiTextNode.textContent = assistantMessage;
-                                    removePendingBubble();
                                     updateAssistantCount();
                                     chatMessages.scrollTop = chatMessages.scrollHeight;
                                 }
@@ -2169,8 +2133,6 @@
                     addMessage('错误: ' + error.message, 'error');
                 }
             } finally {
-                // remove any pending indicator bubble
-                try { removePendingBubble(); } catch (e) { /* ignore */ }
                 // Clean up global flag after stream ends
                 window.__displayThinking = false;
                 currentRequestController = null;
