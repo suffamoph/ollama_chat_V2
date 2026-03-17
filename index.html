@@ -1917,7 +1917,14 @@
                 const filterThinkContent = (text) => {
                     let result = '';
                     let i = 0;
-                    if (thinkFilterState === 'idle' && text.length > 0) thinkFilterState = 'in_think';
+                    // Decide whether to enter think suppression only when the chunk
+                    // explicitly begins with a <think> tag (after optional whitespace).
+                    if (thinkFilterState === 'idle' && text.length > 0) {
+                        const trimmed = text.replace(/^[\s\u00A0\n\r]+/, '');
+                        if (trimmed.startsWith('<think>') || trimmed.startsWith('</think>')) {
+                            thinkFilterState = 'in_think';
+                        }
+                    }
                     while (i < text.length) {
                         if (thinkFilterState === 'in_think') {
                             const end = text.indexOf('</think>', i);
