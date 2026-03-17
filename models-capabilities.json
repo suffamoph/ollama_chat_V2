@@ -1,0 +1,124 @@
+{
+  "audit_date": "2026-03-10",
+  "hardware": "RTX Pro 6000 (96GB VRAM)",
+  "total_models": 8,
+  "models": [
+    {
+      "name": "gemma3:latest",
+      "size_gb": 3.3,
+      "size_gib": 3.1,
+      "size_tier": 1,
+      "vision": true,
+      "tool": false,
+      "thinking": false,
+      "category": "Lightweight Multimodal",
+      "use_case": "Fast image understanding and text generation",
+      "notes": "Only vision capability; no tool calling or reasoning"
+    },
+    {
+      "name": "qwen3:30b",
+      "size_gb": 18,
+      "size_gib": 16.8,
+      "size_tier": 2,
+      "vision": false,
+      "tool": true,
+      "thinking": true,
+      "category": "Reasoning & Agentic",
+      "use_case": "Agent-based reasoning with tool calling",
+      "notes": "Mid-size reasoning model, balanced performance"
+    },
+    {
+      "name": "deepseek-r1:70b",
+      "size_gb": 42,
+      "size_gib": 39.1,
+      "size_tier": 3,
+      "vision": false,
+      "tool": true,
+      "thinking": true,
+      "category": "Reasoning Specialist",
+      "use_case": "Complex reasoning and chain-of-thought tasks",
+      "notes": "Large reasoning model; NO vision support (pure reasoning)"
+    },
+    {
+      "name": "qwen3-vl:8b",
+      "size_gb": 6.1,
+      "size_gib": 5.7,
+      "size_tier": 1,
+      "vision": true,
+      "tool": true,
+      "thinking": true,
+      "category": "Full-Capability Lightweight",
+      "use_case": "Vision-based agentic tasks with thinking",
+      "notes": "Most versatile small model; visual agent with tool calling"
+    },
+    {
+      "name": "huihui_ai/qwen3-vl-abliterated:8b",
+      "size_gb": 6.1,
+      "size_gib": 5.7,
+      "size_tier": 1,
+      "vision": true,
+      "tool": true,
+      "thinking": true,
+      "category": "Specialized Variant",
+      "use_case": "Abliterated variant - unrestricted visual reasoning",
+      "notes": "Same size as qwen3-vl but with modified training"
+    },
+    {
+      "name": "qwen3.5:122b",
+      "size_gb": 81,
+      "size_gib": 75.4,
+      "size_tier": 5,
+      "vision": true,
+      "tool": true,
+      "thinking": true,
+      "category": "Full-Capability Premium",
+      "use_case": "Multimodal reasoning with full agent capabilities",
+      "notes": "Largest model; all capabilities; highest accuracy"
+    },
+    {
+      "name": "gpt-oss:120b",
+      "size_gb": 65,
+      "size_gib": 60.5,
+      "size_tier": 4,
+      "vision": false,
+      "tool": true,
+      "thinking": true,
+      "category": "Reasoning & Agentic",
+      "use_case": "Agentic capabilities with function calling",
+      "notes": "No vision; optimized for reasoning and tool use"
+    },
+    {
+      "name": "qwen3-coder-next:q8_0",
+      "size_gb": 84.8,
+      "size_gib": 79.0,
+      "size_tier": 5,
+      "vision": false,
+      "tool": true,
+      "thinking": false,
+      "category": "Coding Specialist",
+      "use_case": "Code generation and tool calling",
+      "notes": "Non-thinking mode only; optimized for tool calling without reasoning overhead"
+    }
+  ],
+  "capability_summary": {
+    "vision_capable": ["gemma3:latest", "qwen3-vl:8b", "huihui_ai/qwen3-vl-abliterated:8b", "qwen3.5:122b"],
+    "tool_capable": ["qwen3:30b", "deepseek-r1:70b", "qwen3-vl:8b", "huihui_ai/qwen3-vl-abliterated:8b", "qwen3.5:122b", "gpt-oss:120b", "qwen3-coder-next:q8_0"],
+    "thinking_capable": ["qwen3:30b", "deepseek-r1:70b", "qwen3-vl:8b", "huihui_ai/qwen3-vl-abliterated:8b", "qwen3.5:122b", "gpt-oss:120b"],
+    "all_three_capabilities": ["qwen3-vl:8b", "huihui_ai/qwen3-vl-abliterated:8b", "qwen3.5:122b"]
+  },
+  "size_tier_ranges": {
+    "1": "≤7GB (lightweight)",
+    "2": "7-20GB (mid-size)",
+    "3": "20-45GB (large)",
+    "4": "45-70GB (very large)",
+    "5": ">70GB (premium)"
+  },
+  "recommendations": {
+    "balanced_general_use": "qwen3:30b - good reasoning capability with moderate size",
+    "fast_multimodal": "gemma3:latest or qwen3-vl:8b - both fast with vision",
+    "full_capability_small": "qwen3-vl:8b - most versatile in lightweight class",
+    "best_accuracy": "qwen3.5:122b - highest quality across all tasks",
+    "reasoning_only": "deepseek-r1:70b - best pure reasoning without vision",
+    "coding_focus": "qwen3-coder-next:q8_0 - optimized for code generation"
+  }
+}

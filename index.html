@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama 聊天助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+        }
+
+        .chat-container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 980px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            margin: 0 16px;
+        }
+
+        .chat-header {
+            background: #e0e0e0;
+            color: #333;
+            padding: 8px 20px 90px;
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            line-height: 1;
+        }
+
+        .chat-header p {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+
+        .model-controls {
+            position: absolute;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            z-index: 10;
+        }
+
+        .model-label {
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .model-picker {
+            position: relative;
+            min-width: 200px;
+            max-width: 100%;
+            flex: 1;
+        }
+
+        .model-picker-button {
+            width: 100%;
+            border: 1px solid #d0d0d0;
+            border-radius: 18px;
+            padding: 6px 12px;
+            font-size: 13px;
+            outline: none;
+            background: #f5f5f5;
+            color: #333;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .model-picker-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .model-picker-arrow {
+            color: #666;
+            flex-shrink: 0;
+        }
+
+        .model-picker-value {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            flex: 1;
+            justify-content: space-between;
+        }
+
+        .model-option-left {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .model-name {
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .badge-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .model-size-bars {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 4px;
+            line-height: 0;
+        }
+
+        .cap-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1px 6px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.4;
+            border: none;
+        }
+
+        .cap-badge.vision {
+            background: #e0ebff;
+            color: #2563eb;
+            font-weight: 400;
+        }
+
+        .cap-badge.tool {
+            background: #fef3c7;
+            color: #d97706;
+            font-weight: 400;
+        }
+
+        .cap-badge.thinking {
+            background: #ede9fe;
+            color: #9333ea;
+            font-weight: 400;
+        }
+
+        .model-tag {
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            white-space: nowrap;
+            flex-shrink: 0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #e8e8e8;
+        }
+
+        .model-picker-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            max-height: 420px;
+            overflow: auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+            border: 1px solid #d0d0d0;
+            z-index: 30;
+            display: none;
+        }
+
+        .model-picker-menu.show {
+            display: block;
+        }
+
+        .model-picker-option {
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: left;
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .model-picker-option:hover {
+            background: #e8e8e8;
+        }
+
+        .model-picker-option.active {
+            background: #dcdcdc;
+        }
+
+        .model-refresh {
+            border: 1px solid #c0c0c0;
+            background: #e8e8e8;
+            color: #333;
+            border-radius: 18px;
+            padding: 6px 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 28px;
+            width: 28px;
+        }
+
+        .model-refresh:hover {
+            background: #dedede;
+        }
+
+        .vram-panel {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            min-width: 160px;
+            padding: 4px 6px;
+            border-radius: 8px;
+            background: #e8e8e8;
+            border: 1px solid #d0d0d0;
+            text-align: right;
+        }
+
+        .vram-text {
+            font-size: 10px;
+            color: #555;
+            margin-bottom: 2px;
+            white-space: nowrap;
+        }
+
+        .vram-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+
+        .vram-percent {
+            font-size: 10px;
+            color: #555;
+            width: 40px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .vram-bar {
+            width: 70px;
+            height: 4px;
+            border-radius: 999px;
+            background: #d0d0d0;
+            overflow: hidden;
+        }
+
+        .vram-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #d1d1d1 0%, #a3a3a3 100%);
+            transition: width 0.25s ease;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            display: inline-block;
+            width: auto;
+            max-width: 70%;
+            padding: 8px 14px;
+            border-radius: 16px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            position: relative;
+        }
+
+        .assistant-text {
+            display: block;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .message.user {
+            background: #e8ecf0;
+            color: #333;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant {
+            background: #f0f7ff;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .assistant-bubble-tools {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            width: 100%;
+            font-size: 10px;
+            color: #555;
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px dashed #c0c0c0;
+        }
+
+        .assistant-copy-button {
+            border: 1px solid #c0c0c0;
+            background: #f0f0f0;
+            color: #444;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            line-height: 1;
+        }
+
+        .assistant-copy-button:hover {
+            background: #e8e8e8;
+        }
+
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 180ms ease, transform 180ms ease;
+            max-width: 320px;
+            word-break: break-word;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .think-block {
+            background: transparent;
+            border-left: 0;
+            border-radius: 6px;
+            padding: 6px 10px;
+            margin-bottom: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .think-block.collapsed {
+            background: transparent;
+        }
+        .think-block.expanded {
+            background: transparent;
+            border-left: 0;
+            padding: 8px 12px;
+        }
+        .think-block-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* keep status and icon left-aligned */
+            gap: 8px;
+        }
+        .think-block-header .think-status {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+        .think-block-header .think-icon {
+            margin-left: 6px;
+            color: #6b7280;
+            font-size: 24px; /* double the original size (was ~12px) */
+            line-height: 1;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .think-block.expanded .think-block-header {
+            color: #9333ea;
+        }
+        .think-block-body {
+            font-size: 12px;
+            color: #666;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.4;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            border: 1px solid #e5e7eb; /* gray ring around knowledge */
+            border-radius: 6px;
+            padding: 8px;
+            background: transparent;
+        }
+        .think-block.expanded .think-block-body {
+            display: block;
+            color: #444;
+            font-style: italic;
+            background: transparent;
+        }
+
+        .message-info-bar {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            padding: 6px 10px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            border: 1px solid #d0d0d0;
+            font-size: 11px;
+            color: #555;
+            margin-top: 3px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            align-self: flex-start;
+            margin-left: 0;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            white-space: nowrap;
+            padding: 0 6px;
+            border-right: 1px solid #d0d0d0;
+        }
+
+        .info-item:last-child {
+            border-right: none;
+        }
+
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .message.error {
+            background: #f0d0d0;
+            color: #c00;
+            align-self: center;
+            border-radius: 10px;
+        }
+
+        .chat-input-container {
+            padding: 12px 16px;
+            border-top: 1px solid #d0d0d0;
+            display: flex;
+            gap: 8px;
+            background: #f0f0f0;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 8px 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.4;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 400;
+            outline: none;
+            transition: border-color 0.3s;
+            min-width: 140px;
+            resize: none;
+            overflow: auto;
+            background: #fff;
+        }
+
+        .chat-input:focus {
+            border-color: #b0b0b0;
+        }
+
+        .upload-button {
+            background: #ffffff;
+            color: #444;
+            border: 1px solid #c0c0c0;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-button:hover {
+            background: #dedede;
+        }
+
+        .upload-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .thinking-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border: 1px solid #c0c0c0;
+            border-radius: 18px;
+            background: #e8e8e8;
+            color: #444;
+            font-size: 12px;
+            font-weight: 600;
+            user-select: none;
+        }
+
+        .thinking-toggle input {
+            accent-color: #555;
+            cursor: pointer;
+        }
+
+        .send-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stop-button {
+            background: #e8e8e8;
+            color: #444;
+            border: 1px solid #c0c0c0;
+            padding: 8px 8px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 36px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stop-button:hover {
+            background: #dedede;
+        }
+
+        .stop-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .image-preview {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            width: 100%;
+            order: -1;
+        }
+
+        .preview-image {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #d4d4d4;
+        }
+
+        .preview-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-image .remove-btn {
+            position: absolute;
+            top: 1px;
+            right: 1px;
+            width: 16px;
+            height: 16px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-image .remove-btn:hover {
+            background: rgba(200, 0, 0, 1);
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #555;
+            padding: 3px 6px;
+            border-radius: 999px;
+            background: #e0e0e0;
+            z-index: 6;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #bbb;
+        }
+
+        .status-dot.connected {
+            background: #4caf50;
+        }
+
+        .status-dot.disconnected {
+            background: #f44336;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 8px 14px;
+            background: #e8e8e8;
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            align-self: flex-start;
+        }
+
+        .typing-indicator.show {
+            display: flex;
+            gap: 5px;
+        }
+
+        .typing-indicator span {
+            width: 6px;
+            height: 6px;
+            background: #777;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #e8e8e8;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c0c0c0;
+            border-radius: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #b0b0b0;
+        }
+
+        .message-image {
+            max-width: 200px;
+            border-radius: 10px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .message-image:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .image-modal.show {
+            display: flex;
+        }
+
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .image-modal .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .image-modal .close-btn:hover {
+            color: #ccc;
+        }
+
+        @media (max-width: 720px) {
+            .chat-container {
+                height: 88vh;
+            }
+
+            .chat-header {
+                padding: 16px 16px;
+            }
+
+            .model-controls {
+                justify-content: stretch;
+            }
+
+            .model-picker {
+                min-width: 0;
+                width: 100%;
+            }
+
+            .status-indicator {
+                top: 10px;
+                left: 10px;
+                padding: 3px 7px;
+            }
+
+            .vram-panel {
+                top: auto;
+                bottom: 10px;
+                right: 10px;
+                min-width: 160px;
+                padding: 5px 6px;
+            }
+
+            .vram-text,
+            .vram-percent {
+                font-size: 10px;
+            }
+
+            .vram-bar {
+                width: 72px;
+            }
+
+            .chat-input-container {
+                padding: 14px;
+            }
+
+            .send-button,
+            .upload-button,
+            .stop-button,
+            .thinking-toggle {
+                padding: 10px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">检查连接...</span>
+            </div>
+            <h1>Ollama 聊天助手</h1>
+            <div class="model-controls">
+                <span class="model-label">当前模型</span>
+                <select id="modelSelect" style="display: none;">
+                    <option value="">加载中...</option>
+                </select>
+                <div id="modelPicker" class="model-picker">
+                    <button id="modelPickerButton" class="model-picker-button" type="button">
+                        <span id="modelPickerValue" class="model-picker-value">加载中...</span>
+                        <span class="model-picker-arrow">▾</span>
+                    </button>
+                    <div id="modelPickerMenu" class="model-picker-menu"></div>
+                </div>
+                <button id="refreshModelsButton" class="model-refresh" title="刷新模型列表">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                        <path d="M16 21h5v-5"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="vram-panel" id="vramPanel">
+                <div class="vram-text" id="vramText">VRAM -- / --</div>
+                <div class="vram-line">
+                    <span class="vram-percent" id="vramPercent">--%</span>
+                    <div class="vram-bar"><div class="vram-bar-fill" id="vramBarFill"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+                你好，我已准备好。先在顶部选择模型，然后我们开始对话。
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+        <div class="image-modal" id="imageModal">
+            <span class="close-btn">&times;</span>
+            <img id="modalImage" src="" alt="放大图片">
+        </div>
+
+        <div class="chat-input-container">
+            <input 
+                type="file" 
+                class="upload-input" 
+                id="imageInput" 
+                accept="image/*"
+                style="display: none;"
+            >
+            <div class="image-preview" id="imagePreview"></div>
+            <button class="upload-button" id="uploadButton" title="上传图片" aria-label="上传图片">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <label class="thinking-toggle" for="thinkingToggle">
+                <input type="checkbox" id="thinkingToggle">
+                <span>思考</span>
+            </label>
+            <textarea 
+                class="chat-input" 
+                id="userInput" 
+                placeholder="输入你的消息..."
+                autocomplete="off"
+                rows="1"
+                style="resize:none; overflow:auto;"
+            ></textarea>
+            <button class="send-button" id="sendButton">发送</button>
+            <button class="stop-button" id="stopButton" title="停止推理" aria-label="停止推理" disabled>■</button>
+        </div>
+    </div>
+
+    <script>
+        // Use backend proxy endpoints (Flask) to avoid CORS and direct Ollama calls.
+        const BACKEND_API_BASE = '';
+        const OLLAMA_CHAT_API = `${BACKEND_API_BASE}/api/chat`;
+        const OLLAMA_TAGS_API = `${BACKEND_API_BASE}/api/models`;
+        const OLLAMA_PS_API = `${BACKEND_API_BASE}/api/ps`;
+        const MODEL_STORAGE_KEY = 'ollama-selected-model';
+        const THINKING_MODE_STORAGE_KEY = 'ollama-thinking-enabled';
+        // Total GPU VRAM in decimal GB (aligned with Task Manager -> Performance).
+        const TOTAL_VRAM_GB = 94.5;
+        const TOTAL_VRAM_BYTES = TOTAL_VRAM_GB * 1000 * 1000 * 1000;
+        // Ollama /api/ps values are closer to CUDA/nvidia-smi scale; normalize numerator to Task Manager scale.
+        const SOURCE_VRAM_GB = 95.6;
+        const VRAM_SCALE_RATIO = TOTAL_VRAM_GB / SOURCE_VRAM_GB;
+        
+        let messages = [];
+        let isGenerating = false;
+
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const stopButton = document.getElementById('stopButton');
+        const uploadButton = document.getElementById('uploadButton');
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const modelSelect = document.getElementById('modelSelect');
+        const modelPicker = document.getElementById('modelPicker');
+        const modelPickerButton = document.getElementById('modelPickerButton');
+        const modelPickerValue = document.getElementById('modelPickerValue');
+        const modelPickerMenu = document.getElementById('modelPickerMenu');
+        const refreshModelsButton = document.getElementById('refreshModelsButton');
+        const vramText = document.getElementById('vramText');
+        const vramPercent = document.getElementById('vramPercent');
+        const vramBarFill = document.getElementById('vramBarFill');
+        const thinkingToggle = document.getElementById('thinkingToggle');
+
+        let selectedImages = [];
+        let currentModel = '';
+        let modelMetadataMap = new Map();
+        let currentRequestController = null;
+
+        function setCurrentModel(modelName) {
+            currentModel = modelName;
+            if (modelName) {
+                localStorage.setItem(MODEL_STORAGE_KEY, modelName);
+                document.title = `Ollama 聊天 - ${modelName}`;
+            } else {
+                document.title = 'Ollama 聊天';
+            }
+        }
+
+        function getCapabilityLabels(model) {
+            const name = (model.name || '').toLowerCase();
+            const detailText = JSON.stringify(model || {}).toLowerCase();
+
+            const labels = [];
+
+            const hasVision =
+                name.includes('-vl') ||
+                name.includes('gemma3') ||
+                name.includes('qwen3.5') ||
+                detailText.includes('vision') ||
+                detailText.includes('image') ||
+                detailText.includes('multimodal');
+
+            const hasTool =
+                name.includes('qwen3') ||
+                name.includes('deepseek-r1') ||
+                name.includes('gpt-oss') ||
+                name.includes('qwen3-coder') ||
+                detailText.includes('tool') ||
+                detailText.includes('function calling') ||
+                detailText.includes('function_calling') ||
+                detailText.includes('agent');
+
+            const hasThinking =
+                (name.includes('qwen3') && !name.includes('qwen3-coder')) ||
+                name.includes('deepseek-r1') ||
+                name.includes('gpt-oss') ||
+                name.includes('thinking') ||
+                detailText.includes('thinking') ||
+                detailText.includes('reasoning') ||
+                detailText.includes('chain-of-thought');
+
+            if (hasVision) labels.push('vision');
+            if (hasTool) labels.push('tool');
+            if (hasThinking) labels.push('thinking');
+
+            return labels;
+        }
+
+        function getModelTag(modelName) {
+            const name = (modelName || '').toLowerCase();
+            
+            if (name.includes('qwen3-vl') && name.includes('abliterated')) {
+                return '私人定制';
+            } else if (name.includes('qwen3-vl') && !name.includes('abliterated')) {
+                return '全能小钢炮';
+            } else if (name.includes('qwen3.5')) {
+                return '最强全能';
+            } else if (name.includes('qwen3-coder')) {
+                return '代码专家';
+            } else if (name.includes('qwen3:') || name.includes('qwen3 ')) {
+                return '平衡推理';
+            } else if (name.includes('deepseek-r1')) {
+                return '纯推理最强';
+            } else if (name.includes('gpt-oss')) {
+                return '智能体最优';
+            } else if (name.includes('gemma3')) {
+                return '超轻快速';
+            }
+            return '';
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function buildCapabilityBadgesHtml(capabilityLabels) {
+            return capabilityLabels
+                .map(label => `<span class="cap-badge ${label}">${escapeHtml(label)}</span>`)
+                .join('');
+        }
+
+        function formatModelSize(model) {
+            if (typeof model.size === 'number' && Number.isFinite(model.size) && model.size > 0) {
+                const gb = model.size / (1000 ** 3);
+                if (gb >= 1) {
+                    return `${Math.round(gb)}GB`;
+                }
+                const mb = model.size / (1000 ** 2);
+                return `${Math.round(mb)}MB`;
+            }
+            if (model.details && model.details.parameter_size) {
+                return String(model.details.parameter_size);
+            }
+            return '-';
+        }
+
+        function formatBytes(bytes) {
+            if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes <= 0) {
+                return '0 B';
+            }
+            const gb = bytes / (1000 ** 3);
+            if (gb >= 1) {
+                return `${gb.toFixed(1)} GB`;
+            }
+            const mb = bytes / (1000 ** 2);
+            if (mb >= 1) {
+                return `${mb.toFixed(0)} MB`;
+            }
+            const kb = bytes / 1000;
+            if (kb >= 1) {
+                return `${kb.toFixed(0)} KB`;
+            }
+            return `${Math.round(bytes)} B`;
+        }
+
+        function getPsModels(payload) {
+            if (Array.isArray(payload?.models)) return payload.models;
+            if (Array.isArray(payload)) return payload;
+            return [];
+        }
+
+        function getModelVramBytes(item) {
+            if (!item || typeof item !== 'object') return 0;
+            if (typeof item.size_vram === 'number' && Number.isFinite(item.size_vram)) return item.size_vram;
+            if (typeof item.size === 'number' && Number.isFinite(item.size)) return item.size;
+            return 0;
+        }
+
+        function normalizeUsedVramBytes(rawBytes) {
+            const safeRaw = Math.max(0, rawBytes || 0);
+            return safeRaw * VRAM_SCALE_RATIO;
+        }
+
+        function setVramUI(usedBytes, totalBytes) {
+            const safeUsed = Math.max(0, usedBytes || 0);
+            const safeTotal = Math.max(1, totalBytes || 1);
+            const percent = Math.max(0, Math.min(100, (safeUsed / safeTotal) * 100));
+            if (vramText) vramText.textContent = `VRAM ${formatBytes(safeUsed)} / ${formatBytes(safeTotal)}`;
+            if (vramPercent) vramPercent.textContent = `${percent.toFixed(1)}%`;
+            if (vramBarFill) vramBarFill.style.width = `${percent.toFixed(1)}%`;
+        }
+
+        async function updateVramIndicator() {
+            try {
+                const response = await fetch(`${OLLAMA_PS_API}?t=${Date.now()}`, {
+                    method: 'GET',
+                    cache: 'no-store'
+                });
+                if (!response.ok) {
+                    setVramUI(0, TOTAL_VRAM_BYTES);
+                    return;
+                }
+                const payload = await response.json();
+                const models = getPsModels(payload);
+                const rawUsedBytes = models.reduce((sum, model) => sum + getModelVramBytes(model), 0);
+                const normalizedUsedBytes = normalizeUsedVramBytes(rawUsedBytes);
+                setVramUI(normalizedUsedBytes, TOTAL_VRAM_BYTES);
+            } catch (error) {
+                setVramUI(0, TOTAL_VRAM_BYTES);
+            }
+        }
+
+        function getModelSizeGB(model) {
+            if (typeof model.size === 'number' && Number.isFinite(model.size) && model.size > 0) {
+                return model.size / (1000 ** 3);
+            }
+
+            const paramSize = model.details && model.details.parameter_size
+                ? String(model.details.parameter_size).toLowerCase()
+                : '';
+            const match = paramSize.match(/(\d+(?:\.\d+)?)([bm])/);
+            if (!match) {
+                return null;
+            }
+            const value = parseFloat(match[1]);
+            const unit = match[2];
+            return unit === 'm' ? value / 1000 : value;
+        }
+
+        function getSizeLevel(sizeGB) {
+            if (sizeGB == null || !Number.isFinite(sizeGB)) return 1;
+            if (sizeGB <= 7) return 1;
+            if (sizeGB <= 20) return 2;
+            if (sizeGB <= 45) return 3;
+            if (sizeGB <= 70) return 4;
+            return 5;
+        }
+
+        function buildSizeBarsSvg(level) {
+            const barCount = Math.max(1, Math.min(5, level));
+            const active = '#64748b';
+            const inactive = '#d6dde6';
+            const barHeight = 10;
+            const y = 15 - barHeight;
+            const bars = [0, 1, 2, 3, 4].map((_, idx) => {
+                const x = 1 + idx * 4;
+                const color = idx < barCount ? active : inactive;
+                return `<rect x="${x}" y="${y}" width="2" height="${barHeight}" rx="1" fill="${color}"></rect>`;
+            }).join('');
+
+            return `<span class="model-size-bars" title="体积等级 ${barCount}/5"><svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true">${bars}</svg></span>`;
+        }
+
+        function updateModelPickerValue(modelName) {
+            const meta = modelMetadataMap.get(modelName);
+            if (!meta) {
+                modelPickerValue.textContent = modelName || '请选择模型';
+                return;
+            }
+            const modelTag = getModelTag(modelName);
+            modelPickerValue.innerHTML = `
+                <div class="model-option-left">
+                    ${buildSizeBarsSvg(meta.sizeLevel)}
+                    <span class="model-name">${escapeHtml(modelName)}（${escapeHtml(meta.sizeText)}）</span>
+                    <span class="badge-wrap">${buildCapabilityBadgesHtml(meta.capabilityLabels)}</span>
+                </div>
+                ${modelTag ? `<span class="model-tag">${modelTag}</span>` : ''}
+            `;
+        }
+
+        function renderModelPickerOptions(modelItems) {
+            modelPickerMenu.innerHTML = '';
+
+            modelItems.forEach(model => {
+                const name = model.name;
+                const meta = modelMetadataMap.get(name);
+                const optionButton = document.createElement('button');
+                optionButton.type = 'button';
+                optionButton.className = 'model-picker-option';
+                if (name === modelSelect.value) {
+                    optionButton.classList.add('active');
+                }
+                optionButton.dataset.value = name;
+                
+                const modelTag = getModelTag(name);
+                optionButton.innerHTML = `
+                    <div class="model-option-left">
+                        ${meta ? buildSizeBarsSvg(meta.sizeLevel) : ''}
+                        <span class="model-name">${escapeHtml(name)}（${escapeHtml(meta ? meta.sizeText : '-')}）</span>
+                        <span class="badge-wrap">${meta ? buildCapabilityBadgesHtml(meta.capabilityLabels) : ''}</span>
+                    </div>
+                    ${modelTag ? `<span class="model-tag">${modelTag}</span>` : ''}
+                `;
+
+                optionButton.addEventListener('click', function() {
+                    modelSelect.value = name;
+                    modelSelect.dispatchEvent(new Event('change'));
+                    modelPickerMenu.classList.remove('show');
+                });
+
+                modelPickerMenu.appendChild(optionButton);
+            });
+        }
+
+        function syncActivePickerOption() {
+            const options = modelPickerMenu.querySelectorAll('.model-picker-option');
+            options.forEach(item => {
+                item.classList.toggle('active', item.dataset.value === modelSelect.value);
+            });
+        }
+
+        async function fetchLatestTags() {
+            const url = `${OLLAMA_TAGS_API}?t=${Date.now()}`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    cache: 'no-store',
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                // Fallback: try without timestamp  
+                const fallbackController = new AbortController();
+                const fallbackTimeoutId = setTimeout(() => fallbackController.abort(), 5000);
+                try {
+                    const response = await fetch(OLLAMA_TAGS_API, {
+                        method: 'GET',
+                        cache: 'no-store',
+                        signal: fallbackController.signal
+                    });
+                    clearTimeout(fallbackTimeoutId);
+                    return response;
+                } catch (e) {
+                    clearTimeout(fallbackTimeoutId);
+                    throw e;
+                }
+            }
+        }
+
+        async function loadModels() {
+            const lastSelectedModel = localStorage.getItem(MODEL_STORAGE_KEY);
+            const currentSelectedModel = modelSelect.value || currentModel;
+
+            modelSelect.disabled = true;
+            modelPickerButton.disabled = true;
+            refreshModelsButton.disabled = true;
+
+            try {
+                const response = await fetchLatestTags();
+                if (!response.ok) {
+                    throw new Error(`获取模型失败 (${response.status})`);
+                }
+
+                const data = await response.json();
+                const modelItems = Array.isArray(data.models)
+                    ? data.models.filter(item => item && item.name)
+                    : [];
+                
+                modelItems.sort((a, b) => {
+                    const sizeA = getModelSizeGB(a);
+                    const sizeB = getModelSizeGB(b);
+
+                    if (sizeA == null && sizeB == null) {
+                        return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' });
+                    }
+                    if (sizeA == null) return 1;
+                    if (sizeB == null) return -1;
+                    if (sizeA !== sizeB) return sizeA - sizeB;
+                    return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' });
+                });
+
+                const modelNames = modelItems.map(item => item.name);
+                modelMetadataMap = new Map();
+
+                modelSelect.innerHTML = '';
+                modelPickerMenu.innerHTML = '';
+
+                if (modelNames.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '未检测到本地模型';
+                    modelSelect.appendChild(option);
+                    modelPickerValue.textContent = '未检测到本地模型';
+                    setCurrentModel('');
+                    return;
+                }
+
+                modelItems.forEach(model => {
+                    const name = model.name;
+                    const option = document.createElement('option');
+                    option.value = name;
+
+                    const capabilityLabels = getCapabilityLabels(model);
+                    const isMultimodal = capabilityLabels.includes('vision');
+                    const sizeText = formatModelSize(model);
+                    const sizeGB = getModelSizeGB(model);
+                    const sizeLevel = getSizeLevel(sizeGB);
+                    option.textContent = `${name}（${sizeText}）`;
+
+                    option.dataset.multimodal = isMultimodal;
+                    modelSelect.appendChild(option);
+
+                    modelMetadataMap.set(name, {
+                        sizeText,
+                        sizeLevel,
+                        capabilityLabels
+                    });
+                });
+
+                renderModelPickerOptions(modelItems);
+
+                const preferred = 'gemma3:latest';
+                const fallbackModel = modelNames[0];
+                let defaultModel = fallbackModel;
+                if (currentSelectedModel && modelNames.includes(currentSelectedModel)) {
+                    defaultModel = currentSelectedModel;
+                } else if (lastSelectedModel && modelNames.includes(lastSelectedModel)) {
+                    defaultModel = lastSelectedModel;
+                } else if (modelNames.includes(preferred)) {
+                    defaultModel = preferred;
+                }
+
+                modelSelect.value = defaultModel;
+                syncActivePickerOption();
+                updateModelPickerValue(defaultModel);
+                setCurrentModel(defaultModel);
+            } catch (error) {
+                modelSelect.innerHTML = '';
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '模型加载失败';
+                modelSelect.appendChild(option);
+                modelPickerMenu.innerHTML = '';
+                modelPickerValue.textContent = '模型加载失败';
+
+                setCurrentModel('');
+            } finally {
+                modelSelect.disabled = false;
+                modelPickerButton.disabled = false;
+                refreshModelsButton.disabled = false;
+            }
+        }
+
+        async function checkConnection() {
+            try {
+                const response = await fetchLatestTags();
+                if (response.ok) {
+                    statusDot.classList.add('connected');
+                    statusDot.classList.remove('disconnected');
+                    statusText.textContent = '已连接';
+                    return true;
+                }
+            } catch (error) {
+                statusDot.classList.remove('connected');
+                statusDot.classList.add('disconnected');
+                statusText.textContent = '未连接';
+            }
+            return false;
+        }
+
+        function addMessage(content, role, imageData = null, stats = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            if (imageData) {
+                const img = document.createElement('img');
+                img.src = imageData;
+                img.className = 'message-image';
+                img.onclick = function() {
+                    openImageModal(imageData);
+                };
+                messageDiv.appendChild(img);
+            }
+            
+            if (content) {
+                const textNode = document.createTextNode(content);
+                messageDiv.appendChild(textNode);
+            }
+            
+            if (stats && role === 'assistant') {
+                const infoBar = document.createElement('div');
+                infoBar.className = 'message-info-bar';
+                
+                if (stats.model) {
+                    const modelItem = document.createElement('div');
+                    modelItem.className = 'info-item';
+                    modelItem.innerHTML = `<span class="info-icon">📦</span><span>${escapeHtml(stats.model)}</span>`;
+                    infoBar.appendChild(modelItem);
+                }
+                
+                if (stats.duration) {
+                    const durationItem = document.createElement('div');
+                    durationItem.className = 'info-item';
+                    durationItem.innerHTML = `<span class="info-icon">⏳</span><span>${stats.duration.toFixed(2)}s</span>`;
+                    infoBar.appendChild(durationItem);
+                }
+                
+                if (stats.tokensPerSecond) {
+                    const tpsItem = document.createElement('div');
+                    tpsItem.className = 'info-item';
+                    tpsItem.innerHTML = `<span class="info-icon">⚡</span><span>${stats.tokensPerSecond.toFixed(1)} tok/s</span>`;
+                    infoBar.appendChild(tpsItem);
+                }
+                
+                if (stats.promptTokens) {
+                    const promptItem = document.createElement('div');
+                    promptItem.className = 'info-item';
+                    promptItem.innerHTML = `<span class="info-icon">⬆️</span><span>${stats.promptTokens} tokens</span>`;
+                    infoBar.appendChild(promptItem);
+                }
+                
+                if (stats.completionTokens) {
+                    const completionItem = document.createElement('div');
+                    completionItem.className = 'info-item';
+                    completionItem.innerHTML = `<span class="info-icon">⬇️</span><span>${stats.completionTokens} tokens</span>`;
+                    infoBar.appendChild(completionItem);
+                }
+                
+                messageDiv.appendChild(infoBar);
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        // Toast helper (global)
+        let __toastContainer = null;
+        const showToast = (text, duration = 2000) => {
+            try {
+                if (!__toastContainer) {
+                    __toastContainer = document.createElement('div');
+                    __toastContainer.className = 'toast-container';
+                    document.body.appendChild(__toastContainer);
+                }
+                const t = document.createElement('div');
+                t.className = 'toast';
+                t.textContent = text;
+                __toastContainer.appendChild(t);
+                // trigger show
+                requestAnimationFrame(() => t.classList.add('show'));
+                // remove after duration
+                setTimeout(() => {
+                    t.classList.remove('show');
+                    setTimeout(() => { try { __toastContainer.removeChild(t); } catch (e) {} }, 200);
+                }, duration);
+            } catch (e) {
+                // ignore errors in toast
+            }
+        };
+
+        function openImageModal(src) {
+            modalImage.src = src;
+            imageModal.classList.add('show');
+        }
+
+        function closeImageModal() {
+            imageModal.classList.remove('show');
+            modalImage.src = '';
+        }
+
+        function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    const maxWidth = 1024;
+                    const maxHeight = 1024;
+                    
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > maxWidth || height > maxHeight) {
+                        const ratio = Math.min(maxWidth / width, maxHeight / height);
+                        width = Math.floor(width * ratio);
+                        height = Math.floor(height * ratio);
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    canvas.toBlob(function(blob) {
+                        if (!blob) {
+                            reject(new Error('图片压缩失败'));
+                            return;
+                        }
+                        
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const fullDataUrl = e.target.result;
+                            const base64Data = fullDataUrl.split(',')[1];
+                            
+                            resolve({
+                                display: fullDataUrl,
+                                base64: base64Data,
+                                size: blob.size
+                            });
+                        };
+                        reader.readAsDataURL(blob);
+                    }, file.type, 0.8);
+                };
+                img.onerror = function() {
+                    reject(new Error('图片加载失败'));
+                };
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        function handleImageSelect(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('图片大小超过 5MB，将自动压缩');
+                }
+
+                compressImage(file)
+                    .then(imgObj => {
+                        selectedImages.push(imgObj);
+                        updateImagePreview();
+                    })
+                    .catch(err => {
+                        console.error('图片处理失败:', err);
+                        alert('图片处理失败: ' + err.message);
+                    });
+            });
+
+            imageInput.value = '';
+        }
+
+        function updateImagePreview() {
+            imagePreview.innerHTML = '';
+            
+            selectedImages.forEach((imgObj, index) => {
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'preview-image';
+                
+                const img = document.createElement('img');
+                img.src = imgObj.display;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    selectedImages.splice(index, 1);
+                    updateImagePreview();
+                };
+                
+                previewDiv.appendChild(img);
+                previewDiv.appendChild(removeBtn);
+                imagePreview.appendChild(previewDiv);
+            });
+        }
+
+        function showTyping(show) {
+            if (show) {
+                typingIndicator.classList.add('show');
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } else {
+                typingIndicator.classList.remove('show');
+            }
+        }
+
+        function getTextMetrics(text) {
+            const raw = String(text || '');
+            const charCount = Array.from(raw).length;
+            const visibleText = raw.replace(/\s/g, '');
+            const wordCount = Array.from(visibleText).length;
+            return { wordCount, charCount };
+        }
+
+        function stopGeneration() {
+            if (currentRequestController) {
+                currentRequestController.abort();
+            }
+        }
+
+        async function sendMessage() {
+            if (isGenerating) return;
+
+            const message = userInput.value.trim();
+            if (!message && !selectedImages.length) return;
+
+            if (!currentModel) {
+                addMessage('请先在顶部选择可用模型，再发送消息。', 'error');
+                return;
+            }
+
+            const connected = await checkConnection();
+            if (!connected) {
+                addMessage('无法连接到 Ollama，请确保服务正在运行', 'error');
+                return;
+            }
+
+            let userMessage = { role: 'user' };
+            
+            if (selectedImages.length > 0) {
+                const imgObj = selectedImages[0];
+                addMessage(message || '', 'user', imgObj.display);
+                
+                userMessage.content = message || '请描述这张图片';
+                userMessage.images = [imgObj.base64];
+            } else if (message) {
+                addMessage(message, 'user');
+                userMessage.content = message;
+            } else {
+                return;
+            }
+            
+            messages.push(userMessage);
+            
+            selectedImages = [];
+            updateImagePreview();
+            
+            userInput.value = '';
+            isGenerating = true;
+            sendButton.disabled = true;
+            stopButton.disabled = false;
+            uploadButton.disabled = true;
+            thinkingToggle.disabled = true;
+            showTyping(true);
+
+            const aiMessageDiv = addMessage('', 'assistant');
+            const aiTextNode = document.createElement('span');
+            aiTextNode.className = 'assistant-text';
+            aiMessageDiv.appendChild(aiTextNode);
+
+            const assistantTools = document.createElement('div');
+            assistantTools.className = 'assistant-bubble-tools';
+            assistantTools.style.display = 'none';
+            const assistantCount = document.createElement('span');
+            const copyButton = document.createElement('button');
+            copyButton.type = 'button';
+            copyButton.className = 'assistant-copy-button';
+            copyButton.title = '复制回复';
+            copyButton.setAttribute('aria-label', '复制回复');
+            copyButton.textContent = '⧉';
+            copyButton.addEventListener('click', async function() {
+                try {
+                    await navigator.clipboard.writeText(aiTextNode.textContent || '');
+                    showToast('已复制回复');
+                } catch (e) {
+                    showToast('复制失败');
+                }
+            });
+            assistantTools.appendChild(assistantCount);
+            assistantTools.appendChild(copyButton);
+            aiMessageDiv.appendChild(assistantTools);
+
+            const startTime = Date.now();
+            let stats = {};
+            const thinkEnabled = thinkingToggle ? Boolean(thinkingToggle.checked) : false;
+            // Set global flag so stream parser can show/hide internal thinking content
+            window.__displayThinking = !!thinkEnabled;
+            const updateAssistantCount = () => {
+                const currentText = aiTextNode.textContent || '';
+                const metrics = getTextMetrics(currentText);
+                if (metrics.charCount > 0) {
+                    assistantTools.style.display = 'flex';
+                    assistantCount.textContent = `字数 ${metrics.wordCount} / 字符 ${metrics.charCount}`;
+                    assistantCount.style.visibility = 'visible';
+                } else {
+                    assistantTools.style.display = 'none';
+                    assistantCount.textContent = '';
+                    assistantCount.style.visibility = 'hidden';
+                }
+            };
+            updateAssistantCount();
+
+            try {
+                currentRequestController = new AbortController();
+                const response = await fetch(OLLAMA_CHAT_API, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    signal: currentRequestController.signal,
+                    body: JSON.stringify({
+                        model: currentModel,
+                        messages: messages,
+                        think: thinkEnabled,
+                        options: {
+                            think: thinkEnabled
+                        },
+                        stream: true
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API 错误:', response.status, errorText);
+                    throw new Error(`请求失败 (${response.status}): ${errorText.substring(0, 100)}`);
+                }
+
+                showTyping(false);
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let assistantMessage = '';
+                let lastStats = {};
+                let streamBuffer = '';
+
+                // Extracts regular content text from a JSON chunk
+                const extractContentText = (json) => {
+                    if (!json || typeof json !== 'object') return '';
+                    if (json.message && typeof json.message === 'object') {
+                        if (typeof json.message.content === 'string') return json.message.content;
+                    }
+                    if (typeof json.response === 'string') return json.response;
+                    return '';
+                };
+
+                // Extracts dedicated thinking/reasoning field from a JSON chunk
+                const extractThinkingText = (json) => {
+                    if (!json || typeof json !== 'object') return '';
+                    if (json.message && typeof json.message === 'object') {
+                        if (typeof json.message.thinking === 'string') return json.message.thinking;
+                        if (typeof json.message.reasoning === 'string') return json.message.reasoning;
+                    }
+                    return '';
+                };
+
+                // Think block DOM — collapsed by default, shows timer; click expands to full body
+                let thinkBlockEl = null;
+                let thinkBodyEl = null;
+                let thinkAccum = '';
+                let thinkTimerId = null;
+                let thinkStartTime = 0;
+                let thinkElapsedMs = 0; // accumulated elapsed while thinking
+                let thinkOngoing = false; // true while model is actively thinking
+                const formatElapsed = (ms) => (ms / 1000).toFixed(1);
+
+                const startThinkTimer = (statusSpan) => {
+                    if (thinkTimerId) return;
+                    thinkStartTime = Date.now();
+                    statusSpan.style.display = 'inline';
+                    const update = () => {
+                        const s = formatElapsed(thinkElapsedMs + (Date.now() - thinkStartTime));
+                        statusSpan.textContent = `思考中... (${s}s)`;
+                    };
+                    update();
+                    thinkTimerId = setInterval(update, 200);
+                };
+
+                const stopThinkTimer = (statusSpan) => {
+                    if (!thinkTimerId) return;
+                    clearInterval(thinkTimerId);
+                    thinkTimerId = null;
+                    thinkElapsedMs += Date.now() - thinkStartTime;
+                    if (statusSpan) statusSpan.textContent = `思考完成 (${formatElapsed(thinkElapsedMs)}s)`;
+                };
+
+                const ensureThinkBlock = () => {
+                    if (!thinkBlockEl) {
+                        thinkBlockEl = document.createElement('div');
+                        thinkBlockEl.className = 'think-block collapsed';
+
+                        const hdr = document.createElement('div');
+                        hdr.className = 'think-block-header';
+
+                        const statusSpan = document.createElement('span');
+                        statusSpan.className = 'think-status';
+                        statusSpan.textContent = '思考中... (0.0s)';
+
+                        const icon = document.createElement('span');
+                        icon.className = 'think-icon';
+                        icon.textContent = '▸';
+
+                        hdr.appendChild(statusSpan);
+                        hdr.appendChild(icon);
+
+                        thinkBodyEl = document.createElement('div');
+                        thinkBodyEl.className = 'think-block-body';
+                        thinkBodyEl.style.display = 'none';
+
+                        hdr.addEventListener('click', () => {
+                            const collapsed = thinkBlockEl.classList.contains('collapsed');
+                            if (collapsed) {
+                                // expand
+                                thinkBlockEl.classList.remove('collapsed');
+                                thinkBlockEl.classList.add('expanded');
+                                icon.textContent = '▾';
+                                thinkBodyEl.style.display = 'block';
+                                // stop timer while expanded (status text remains visible)
+                                stopThinkTimer(statusSpan);
+                                thinkBodyEl.textContent = thinkAccum || '（暂无思考输出）';
+                            } else {
+                                // collapse
+                                thinkBlockEl.classList.remove('expanded');
+                                thinkBlockEl.classList.add('collapsed');
+                                icon.textContent = '▸';
+                                thinkBodyEl.style.display = 'none';
+                                // resume timer only if thinking is still ongoing
+                                if (thinkOngoing) startThinkTimer(statusSpan);
+                            }
+                        });
+
+                        thinkBlockEl.appendChild(hdr);
+                        thinkBlockEl.appendChild(thinkBodyEl);
+                        aiMessageDiv.insertBefore(thinkBlockEl, aiTextNode);
+                    }
+                    return thinkBodyEl;
+                };
+
+                const appendThink = (text) => {
+                    if (!text) return;
+                    thinkAccum += text;
+                    // ensure block exists so header/timer is present
+                    const body = ensureThinkBlock();
+                    // if expanded, show content immediately
+                    if (thinkBlockEl.classList.contains('expanded') && body) {
+                        body.textContent = thinkAccum;
+                    }
+                    // mark thinking as ongoing and ensure timer is running
+                    thinkOngoing = true;
+                    const hdrStatus = thinkBlockEl.querySelector('.think-status');
+                    if (hdrStatus) startThinkTimer(hdrStatus);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                };
+
+                // Stateful filter: suppresses think content when thinking is OFF.
+                let thinkFilterState = 'idle'; // 'idle' | 'in_think' | 'done'
+                const filterThinkContent = (text) => {
+                    let result = '';
+                    let i = 0;
+                    if (thinkFilterState === 'idle' && text.length > 0) thinkFilterState = 'in_think';
+                    while (i < text.length) {
+                        if (thinkFilterState === 'in_think') {
+                            const end = text.indexOf('</think>', i);
+                            if (end === -1) { break; }
+                            thinkFilterState = 'done';
+                            i = end + 8;
+                            while (i < text.length && (text[i] === '\n' || text[i] === '\r' || text[i] === ' ' || text[i] === '\t')) i++;
+                        } else {
+                            result += text.slice(i);
+                            break;
+                        }
+                    }
+                    return result;
+                };
+
+                // State for parsing embedded <think>...</think> tags in content (think ON mode)
+                let inEmbeddedThink = false;
+
+                const applyStreamLine = (rawLine) => {
+                    const line = String(rawLine || '').trim();
+                    if (!line) return;
+
+                    const payload = line.startsWith('data:') ? line.slice(5).trim() : line;
+                    if (!payload || payload === '[DONE]') return;
+
+                    try {
+                        const json = JSON.parse(payload);
+
+                        if (window.__displayThinking) {
+                            // Route dedicated thinking fields to the think block
+                            const thinkDelta = extractThinkingText(json);
+                            if (thinkDelta) appendThink(thinkDelta);
+
+                            // Parse content: route embedded <think>…</think> to think block, rest to answer
+                            const contentDelta = extractContentText(json);
+                            if (contentDelta) {
+                                let i = 0;
+                                while (i < contentDelta.length) {
+                                    if (inEmbeddedThink) {
+                                        const end = contentDelta.indexOf('</think>', i);
+                                        if (end === -1) {
+                                            appendThink(contentDelta.slice(i));
+                                            i = contentDelta.length;
+                                        } else {
+                                            appendThink(contentDelta.slice(i, end));
+                                            inEmbeddedThink = false;
+                                            // thinking segment closed — stop timer
+                                            thinkOngoing = false;
+                                            if (thinkBlockEl) {
+                                                const hdrStatus = thinkBlockEl.querySelector('.think-status');
+                                                if (hdrStatus) stopThinkTimer(hdrStatus);
+                                            }
+                                            i = end + 8;
+                                            while (i < contentDelta.length && (contentDelta[i] === '\n' || contentDelta[i] === '\r')) i++;
+                                        }
+                                    } else {
+                                        const start = contentDelta.indexOf('<think>', i);
+                                        if (start === -1) {
+                                            let chunk = contentDelta.slice(i);
+                                            if (!assistantMessage) chunk = chunk.replace(/^[\s\n\r]+/, '');
+                                            if (chunk) {
+                                                assistantMessage += chunk;
+                                                aiTextNode.textContent = assistantMessage;
+                                                updateAssistantCount();
+                                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                                                // non-thinking content arrived — if we were thinking, mark end
+                                                if (thinkOngoing) {
+                                                    thinkOngoing = false;
+                                                    if (thinkBlockEl) {
+                                                        const hdrStatus = thinkBlockEl.querySelector('.think-status');
+                                                        if (hdrStatus) stopThinkTimer(hdrStatus);
+                                                    }
+                                                }
+                                            }
+                                            i = contentDelta.length;
+                                        } else {
+                                            const before = contentDelta.slice(i, start);
+                                            if (before) {
+                                                assistantMessage += before;
+                                                aiTextNode.textContent = assistantMessage;
+                                                updateAssistantCount();
+                                            }
+                                            inEmbeddedThink = true;
+                                            i = start + 7;
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Thinking OFF: filter out think content, only show answer
+                            let deltaText = extractContentText(json);
+                            if (deltaText) deltaText = filterThinkContent(deltaText);
+                            if (deltaText) {
+                                if (!assistantMessage) deltaText = deltaText.replace(/^[\s\n\r]+/, '');
+                                if (deltaText) {
+                                    assistantMessage += deltaText;
+                                    aiTextNode.textContent = assistantMessage;
+                                    updateAssistantCount();
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                }
+                            }
+                        }
+
+                        if (json.eval_count || json.prompt_eval_count) {
+                            lastStats = json;
+                        }
+                    } catch (e) {
+                        // Ignore incomplete or non-JSON lines.
+                    }
+                };
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    // Keep decoder in streaming mode so split UTF-8 bytes are handled correctly.
+                    streamBuffer += decoder.decode(value, { stream: true });
+                    const lines = streamBuffer.split('\n');
+                    streamBuffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        applyStreamLine(line);
+                    }
+                }
+
+                // Flush any remaining decoded content after stream end.
+                streamBuffer += decoder.decode();
+                if (streamBuffer) {
+                    const restLines = streamBuffer.split('\n');
+                    for (const line of restLines) {
+                        applyStreamLine(line);
+                    }
+                }
+
+                // If thinking was still ongoing at stream end, stop the timer and mark complete
+                if (thinkBlockEl && thinkOngoing) {
+                    const hdrStatus = thinkBlockEl.querySelector('.think-status');
+                    if (hdrStatus) stopThinkTimer(hdrStatus);
+                    thinkOngoing = false;
+                }
+
+                const endTime = Date.now();
+                const totalDuration = (endTime - startTime) / 1000;
+                
+                stats.model = currentModel;
+                stats.duration = totalDuration;
+                stats.promptTokens = lastStats.prompt_eval_count || 0;
+                stats.completionTokens = lastStats.eval_count || 0;
+                stats.thinkMode = thinkEnabled;
+                
+                if (stats.completionTokens > 0 && totalDuration > 0) {
+                    stats.tokensPerSecond = stats.completionTokens / totalDuration;
+                }
+
+                const infoBar = document.createElement('div');
+                infoBar.className = 'message-info-bar';
+                
+                if (stats.model) {
+                    const modelItem = document.createElement('div');
+                    modelItem.className = 'info-item';
+                    modelItem.innerHTML = `<span class="info-icon">📦</span><span>${escapeHtml(stats.model)}</span>`;
+                    infoBar.appendChild(modelItem);
+                }
+
+                if (stats.thinkMode !== undefined) {
+                    const thinkItem = document.createElement('div');
+                    thinkItem.className = 'info-item';
+                    thinkItem.innerHTML = `<span>${stats.thinkMode ? '🧠 ON' : '🧠 OFF'}</span>`;
+                    infoBar.appendChild(thinkItem);
+                }
+                
+                if (stats.duration) {
+                    const durationItem = document.createElement('div');
+                    durationItem.className = 'info-item';
+                    durationItem.innerHTML = `<span class="info-icon">⏳</span><span>${stats.duration.toFixed(2)}s</span>`;
+                    infoBar.appendChild(durationItem);
+                }
+                
+                if (stats.tokensPerSecond) {
+                    const tpsItem = document.createElement('div');
+                    tpsItem.className = 'info-item';
+                    tpsItem.innerHTML = `<span class="info-icon">⚡</span><span>${stats.tokensPerSecond.toFixed(1)} tok/s</span>`;
+                    infoBar.appendChild(tpsItem);
+                }
+                
+                if (stats.promptTokens) {
+                    const promptItem = document.createElement('div');
+                    promptItem.className = 'info-item';
+                    promptItem.innerHTML = `<span class="info-icon">⬆️</span><span>${stats.promptTokens} tokens</span>`;
+                    infoBar.appendChild(promptItem);
+                }
+                
+                if (stats.completionTokens) {
+                    const completionItem = document.createElement('div');
+                    completionItem.className = 'info-item';
+                    completionItem.innerHTML = `<span class="info-icon">⬇️</span><span>${stats.completionTokens} tokens</span>`;
+                    infoBar.appendChild(completionItem);
+                }
+                
+                chatMessages.appendChild(infoBar);
+
+                messages.push({ role: 'assistant', content: assistantMessage });
+            } catch (error) {
+                if (error && error.name === 'AbortError') {
+                    // User manually stopped generation.
+                } else {
+                    console.error('错误:', error);
+                    addMessage('错误: ' + error.message, 'error');
+                }
+            } finally {
+                // Clean up global flag after stream ends
+                window.__displayThinking = false;
+                currentRequestController = null;
+                isGenerating = false;
+                sendButton.disabled = false;
+                stopButton.disabled = true;
+                uploadButton.disabled = false;
+                thinkingToggle.disabled = false;
+                showTyping(false);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedThinkingMode = localStorage.getItem(THINKING_MODE_STORAGE_KEY);
+            if (thinkingToggle) {
+                // Default off when no prior user choice exists.
+                thinkingToggle.checked = savedThinkingMode === '1';
+                thinkingToggle.addEventListener('change', function() {
+                    localStorage.setItem(THINKING_MODE_STORAGE_KEY, thinkingToggle.checked ? '1' : '0');
+                });
+            }
+
+            loadModels();
+            checkConnection();
+            updateVramIndicator();
+            setInterval(checkConnection, 5000);
+            setInterval(updateVramIndicator, 5000);
+
+            modelPickerButton.addEventListener('click', function() {
+                modelPickerMenu.classList.toggle('show');
+            });
+
+            document.addEventListener('click', function(event) {
+                if (!modelPicker.contains(event.target)) {
+                    modelPickerMenu.classList.remove('show');
+                }
+            });
+
+            modelSelect.addEventListener('change', function(e) {
+                updateModelPickerValue(e.target.value);
+                setCurrentModel(e.target.value);
+                syncActivePickerOption();
+            });
+
+            uploadButton.addEventListener('click', function() {
+                imageInput.click();
+            });
+
+            imageInput.addEventListener('change', handleImageSelect);
+
+            imageModal.addEventListener('click', closeImageModal);
+
+            userInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                        return;
+                    }
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            sendButton.addEventListener('click', sendMessage);
+            stopButton.addEventListener('click', stopGeneration);
+            refreshModelsButton.addEventListener('click', loadModels);
+        });
+    </script>
+</body>
+</html>
